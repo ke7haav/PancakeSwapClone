@@ -15,7 +15,7 @@ contract Custom_Router is IRouter {
 
     address public immutable override factory;
     address public immutable override WETH;
-  address public owner = 0x25E103D477025F9A8270328d84397B2cEE32D0BF;
+  
     modifier ensure(uint deadline) {
         require(deadline >= block.timestamp, 'PancakeRouter: EXPIRED');
         _;
@@ -233,16 +233,13 @@ contract Custom_Router is IRouter {
         address to,
         uint deadline
     ) external virtual override ensure(deadline) returns (uint[] memory amounts) {
-         uint256 reducedAmountIn = amountIn * 995 / 1000;
-        uint256 admintransferAmount = amountIn - reducedAmountIn;
-
-        amounts = PancakeLibrary.getAmountsOut(factory, reducedAmountIn, path);
-//         require(amounts[amounts.length - 1] >= amountOutMin, 'PancakeRouter: INSUFFICIENT_OUTPUT_AMOUNT');
+        amounts = PancakeLibrary.getAmountsOut(factory, amountIn, path);
+        require(amounts[amounts.length - 1] >= amountOutMin, 'PancakeRouter: INSUFFICIENT_OUTPUT_AMOUNT');
         TransferHelper.safeTransferFrom(
             path[0], msg.sender, PancakeLibrary.pairFor(factory, path[0], path[1]), amounts[0]
         );
         _swap(amounts, path, to);
-        TransferHelper.safeTransferFrom(path[0], msg.sender, owner, admintransferAmount);
+        
     }
 
 
@@ -263,13 +260,6 @@ contract Custom_Router is IRouter {
     }
 
 
-      function transferFundsToOwner() public {
-        address payable sender = msg.sender;
-        require(msg.sender == owner, "Only Owner can withdraw");
-        require(address(this).balance > 0, "No funds to transfer");
-        require(sender.send(address(this).balance), "Transfer failed");
-    }
-
     //ON it
     function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline)
         external
@@ -279,18 +269,13 @@ contract Custom_Router is IRouter {
         ensure(deadline)
         returns (uint[] memory amounts)
     {
-    //   uint256 min =   amountOutMin ;
-    //   min.mul(100);
+
         require(path[0] == WETH, 'PancakeRouter: INVALID_PATH');
-           uint256 fee = (msg.value * 5) / 1000;
-          uint256 remainingAmount = msg.value.sub(fee);
-   
-        amounts = PancakeLibrary.getAmountsOut(factory, remainingAmount, path);
-      //  require(amounts[amounts.length - 1] >= amountOutMin, 'PancakeRouter: INSUFFICIENT_OUTPUT_AMOUNT');
-        IWETH(WETH).deposit{value: amounts[0]+fee}();
+        amounts = PancakeLibrary.getAmountsOut(factory, msg.value, path);
+       require(amounts[amounts.length - 1] >= amountOutMin, 'PancakeRouter: INSUFFICIENT_OUTPUT_AMOUNT');
+        IWETH(WETH).deposit{value: amounts[0]}();
         assert(IWETH(WETH).transfer(PancakeLibrary.pairFor(factory, path[0], path[1]), amounts[0]));
         _swap(amounts, path, to);
-        IWETH(WETH).transfer(owner, fee);
     }
 
     
@@ -313,11 +298,6 @@ contract Custom_Router is IRouter {
         TransferHelper.safeTransferETH(to, amounts[amounts.length - 1]);
     }
 
-    function withdraw(address _token) public payable{
-        require(msg.sender == owner, "Only Owner can withdraw");
-        IERC20 token = IERC20(_token);
-        token.transfer(msg.sender,token.balanceOf(address(this)));
-    }
 
     
     function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline)
@@ -328,20 +308,17 @@ contract Custom_Router is IRouter {
         returns (uint[] memory amounts)
     {
         require(path[path.length - 1] == WETH, 'PancakeRouter: INVALID_PATH');
-         uint256 remain = (amountIn/400);
-          uint256 remainingAmount = amountIn.sub(remain);
-        amounts = PancakeLibrary.getAmountsOut(factory, remainingAmount, path);
-      //  require(amounts[amounts.length - 1] >= amountOutMin, 'PancakeRouter: INSUFFICIENT_OUTPUT_AMOUNT');
+        amounts = PancakeLibrary.getAmountsOut(factory, amountIn, path);
+       require(amounts[amounts.length - 1] >= amountOutMin, 'PancakeRouter: INSUFFICIENT_OUTPUT_AMOUNT');
         TransferHelper.safeTransferFrom(
             path[0], msg.sender, PancakeLibrary.pairFor(factory, path[0], path[1]), amounts[0]
-        );
-         TransferHelper.safeTransferFrom(
-            path[0], msg.sender, address(this), remain
         );
         _swap(amounts, path, address(this));
         IWETH(WETH).withdraw(amounts[amounts.length - 1]);
         TransferHelper.safeTransferETH(to, amounts[amounts.length - 1]);
     }
+
+
     function swapETHForExactTokens(uint amountOut, address[] calldata path, address to, uint deadline)
         external
         virtual
@@ -434,17 +411,14 @@ contract Custom_Router is IRouter {
         ensure(deadline)
     {
         require(path[path.length - 1] == WETH, 'PancakeRouter: INVALID_PATH');
-            uint256 remain = (amountIn/400);
-          uint256 remainingAmount = amountIn.sub(remain);
+       
         TransferHelper.safeTransferFrom(
-            path[0], msg.sender, PancakeLibrary.pairFor(factory, path[0], path[1]), remainingAmount
+            path[0], msg.sender, PancakeLibrary.pairFor(factory, path[0], path[1]), amountIn
         );
-          TransferHelper.safeTransferFrom(
-            path[0], msg.sender, address(this), remain
-        );
+      
         _swapSupportingFeeOnTransferTokens(path, address(this));
         uint amountOut = IERC20(WETH).balanceOf(address(this));
-     //   require(amountOut >= amountOutMin, 'PancakeRouter: INSUFFICIENT_OUTPUT_AMOUNT');
+       require(amountOut >= amountOutMin, 'PancakeRouter: INSUFFICIENT_OUTPUT_AMOUNT');
         IWETH(WETH).withdraw(amountOut);
         TransferHelper.safeTransferETH(to, amountOut);
     }

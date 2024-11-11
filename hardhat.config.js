@@ -50,11 +50,11 @@ module.exports = {
       accounts: [process.env.PVT_KEY]
     },
     sepolia: {
-      url: `https://sepolia.infura.io/v3/1b0d6b0a99704bbea5778b2de0938dd2`, 
+      url: `https://sepolia.infura.io/v3/${process.env.INFURA_API_KEY}`, 
       accounts: [process.env.PVT_KEY] 
     },
     amoy:{
-    url: `https://polygon-amoy.infura.io/v3/1b0d6b0a99704bbea5778b2de0938dd2`,
+    url: `https://polygon-amoy.infura.io/v3/${process.env.INFURA_API_KEY}`,
     accounts: [process.env.PVT_KEY]
    }
   },
